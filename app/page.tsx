@@ -566,21 +566,22 @@ const App: React.FC = () => {
     if (!window.confirm('确认将当前持仓和日志上传到远程 WebDAV 文件？\n这会覆盖远程现有数据。')) {
       return;
     }
-    const url = cfg.endpoint.replace(/\/$/, '') + cfg.path;
-    const payload = buildSyncPayload();
     try {
-      const resp = await fetch(url, {
-        method: 'PUT',
+      const resp = await fetch('/api/webdav/upload', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(cfg.username
-            ? { Authorization: 'Basic ' + window.btoa(cfg.username + ':' + cfg.password) }
-            : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ cfg, payload: buildSyncPayload() }),
       });
       if (!resp.ok) {
-        window.alert('上传失败: ' + resp.status + ' ' + resp.statusText);
+        const data = await resp.json().catch(() => null);
+        window.alert('上传失败: ' + (data?.message || (resp.status + ' ' + resp.statusText)));
+        return;
+      }
+      const data = await resp.json().catch(() => null);
+      if (!data?.success) {
+        window.alert('上传失败: ' + (data?.message || '未知错误'));
         return;
       }
       window.alert('上传成功。');
@@ -599,30 +600,25 @@ const App: React.FC = () => {
      if (!window.confirm('确认从远程 WebDAV 文件下载并覆盖本地持仓和日志？')) {
        return;
      }
-    const url = cfg.endpoint.replace(/\/$/, '') + cfg.path;
     try {
-      const resp = await fetch(url, {
-        method: 'GET',
+      const resp = await fetch('/api/webdav/download', {
+        method: 'POST',
         headers: {
-          Accept: 'application/json, */*',
-          ...(cfg.username
-            ? { Authorization: 'Basic ' + window.btoa(cfg.username + ':' + cfg.password) }
-            : {}),
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ cfg }),
       });
       if (!resp.ok) {
-        window.alert('下载失败: ' + resp.status + ' ' + resp.statusText);
+        const data = await resp.json().catch(() => null);
+        window.alert('下载失败: ' + (data?.message || (resp.status + ' ' + resp.statusText)));
         return;
       }
-      const text = await resp.text();
-      let data: any = null;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        window.alert('下载的数据不是有效的 JSON。');
+      const data = await resp.json().catch(() => null);
+      if (!data?.success) {
+        window.alert('下载失败: ' + (data?.message || '未知错误'));
         return;
       }
-      applySyncPayload(data);
+      applySyncPayload(data.data);
       window.alert('下载并应用成功。');
     } catch (e: any) {
       window.alert('下载异常: ' + (e?.message || String(e)));
