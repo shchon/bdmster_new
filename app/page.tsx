@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useMemo } from 'react';
 import { Activity, RefreshCw, LogOut, Briefcase, ListFilter, Sparkles, ArrowDownCircle, ArrowUpCircle, FileText, SlidersHorizontal } from 'lucide-react';
-import { BondData } from '../types';
+import { BondData, type ScreenRequest } from '../types';
 import { fetchJisiluData, loginJisilu, logoutJisilu, restoreJisiluCookie } from '../services/jisiluService';
+import { screenBonds } from '../services/bonds';
 import BondTable from '../components/BondTable';
 import LoginModal from '../components/LoginModal';
 import ScoreConfigModal from '../components/ScoreConfigModal';
@@ -33,6 +34,9 @@ const App: React.FC = () => {
   const [isWebdavOpen, setIsWebdavOpen] = useState(false);
   const [storageLoaded, setStorageLoaded] = useState(false);
 
+  // 全量行情快照，供“持仓监控”三块使用，不受后端 TopN 影响
+  const [allBonds, setAllBonds] = useState<BondData[]>([]);
+
   const [scoreConfig, setScoreConfig] = useState<ScoreConfig>(DEFAULT_SCORE_CONFIG);
 
   const [marketFilters, setMarketFilters] = useState<{
@@ -43,8 +47,7 @@ const App: React.FC = () => {
     minTurnoverRate: number | null;
     minRedeemDays: number | null;
     excludeBRating: boolean;
-    excludeStockST: boolean;
-    excludeRedeem: boolean;
+    excludeNewBond: boolean;
   }>({
     keyword: '',
     maxPrice: null,
@@ -53,8 +56,7 @@ const App: React.FC = () => {
     minTurnoverRate: null,
     minRedeemDays: null,
     excludeBRating: false,
-    excludeStockST: false,
-    excludeRedeem: false,
+    excludeNewBond: false,
   });
   
   // Holdings State (Persisted in localStorage)
@@ -70,6 +72,8 @@ const App: React.FC = () => {
     try {
       const effectiveScoreConfig = overrideScoreConfig ?? scoreConfig;
       const data = await fetchJisiluData(effectiveScoreConfig);
+      // 更新全量行情快照和当前候选池
+      setAllBonds(data);
       setBonds(data);
       setLastUpdated(new Date());
       if (typeof window !== 'undefined') {
@@ -82,6 +86,51 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to load market data", error);
       const msg = error?.message || "数据加载失败";
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackendScreen = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const req: ScreenRequest = {};
+
+      if (marketFilters.maxPrice !== null) {
+        req.max_price = marketFilters.maxPrice;
+      }
+      if (marketFilters.maxPremium !== null) {
+        req.max_premium_rt = marketFilters.maxPremium;
+      }
+      if (marketFilters.minTurnoverRate !== null) {
+        req.min_turnover_rt = marketFilters.minTurnoverRate;
+      }
+      if (marketFilters.minRemainingYear !== null) {
+        req.year_left = marketFilters.minRemainingYear;
+      }
+
+      if (marketTopN !== 'ALL') {
+        req.top_n = marketTopN;
+      }
+
+      if (marketFilters.excludeBRating) {
+        req.rating_pattern = 'A';
+      }
+
+      if (holdingIds.size > 0) {
+        req.hold_ids = Array.from(holdingIds);
+      }
+
+      const { bonds: screenedBonds } = await screenBonds(req);
+
+      setBonds(screenedBonds);
+      setLastUpdated(new Date());
+    } catch (error: any) {
+      console.error('Backend screening failed', error);
+      const msg = error?.message || '后端选股失败';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -308,17 +357,18 @@ const App: React.FC = () => {
   };
 
   // Derived Data Lists
+  // 持仓相关视图始终基于 allBonds（最近一次全量行情），避免被后端 TopN 筛掉
   const myHoldingsData = useMemo(() => {
-    return bonds.filter((b) => holdingIds.has(b.id) && !sellIds.has(b.id));
-  }, [bonds, holdingIds, sellIds]);
+    return allBonds.filter((b) => holdingIds.has(b.id) && !sellIds.has(b.id));
+  }, [allBonds, holdingIds, sellIds]);
 
   const myToSellData = useMemo(() => {
-    return bonds.filter((b) => holdingIds.has(b.id) && sellIds.has(b.id));
-  }, [bonds, holdingIds, sellIds]);
+    return allBonds.filter((b) => holdingIds.has(b.id) && sellIds.has(b.id));
+  }, [allBonds, holdingIds, sellIds]);
 
   const myToBuyData = useMemo(() => {
-    return bonds.filter((b) => buyIds.has(b.id) && !holdingIds.has(b.id));
-  }, [bonds, buyIds, holdingIds]);
+    return allBonds.filter((b) => buyIds.has(b.id) && !holdingIds.has(b.id));
+  }, [allBonds, buyIds, holdingIds]);
 
   const holdingsOverallChange = useMemo(() => {
     if (myHoldingsData.length === 0) return null;
@@ -376,20 +426,9 @@ const App: React.FC = () => {
         return false;
       }
 
-      if (marketFilters.excludeBRating) {
-        const r = (b.rating || '').trim().toUpperCase();
-        if (!r.startsWith('A')) return false;
-      }
-
-      if (marketFilters.excludeStockST) {
-        const sn = (b.stockName || '').toUpperCase();
-        if (sn.includes('ST')) return false;
-      }
-
-      if (marketFilters.excludeRedeem) {
-        const iconActive = typeof b.redeemIcon === 'string' && b.redeemIcon.trim() !== '';
-        const statusText = (b.redeemStatus || '').replace(/\\\//g, '/');
-        if (iconActive || statusText.includes('强赎')) return false;
+      if (marketFilters.excludeNewBond) {
+        const nm = (b.name || '').trim().toUpperCase();
+        if (nm.startsWith('N')) return false;
       }
 
       if (marketFilters.minRedeemDays !== null) {
@@ -443,7 +482,8 @@ const App: React.FC = () => {
     if (!confirm(`确认执行买卖？\n买入：${buyList.length} 支\n卖出：${sellList.length} 支`)) return;
     if (!confirm('再次确认：执行后将直接修改持仓列表，是否继续？')) return;
 
-    const bondMap = new Map(bonds.map((b) => [b.id, b] as const));
+    // 交易日志里的代码与名称尽量从全量行情里取，保证持仓中所有债券都能找到
+    const bondMap = new Map(allBonds.map((b) => [b.id, b] as const));
     const toBrief = (id: string) => {
       const b = bondMap.get(id);
       return {
@@ -964,37 +1004,13 @@ const App: React.FC = () => {
                   <label className="flex items-center gap-1 text-xs text-slate-300 select-none">
                     <input
                       type="checkbox"
-                      checked={marketFilters.excludeBRating}
+                      checked={marketFilters.excludeNewBond}
                       onChange={(e) =>
-                        setMarketFilters((p) => ({ ...p, excludeBRating: e.target.checked }))
+                        setMarketFilters((p) => ({ ...p, excludeNewBond: e.target.checked }))
                       }
                       className="accent-blue-500"
                     />
-                    排除非A级
-                  </label>
-
-                  <label className="flex items-center gap-1 text-xs text-slate-300 select-none">
-                    <input
-                      type="checkbox"
-                      checked={marketFilters.excludeStockST}
-                      onChange={(e) =>
-                        setMarketFilters((p) => ({ ...p, excludeStockST: e.target.checked }))
-                      }
-                      className="accent-blue-500"
-                    />
-                    排除ST
-                  </label>
-
-                  <label className="flex items-center gap-1 text-xs text-slate-300 select-none">
-                    <input
-                      type="checkbox"
-                      checked={marketFilters.excludeRedeem}
-                      onChange={(e) =>
-                        setMarketFilters((p) => ({ ...p, excludeRedeem: e.target.checked }))
-                      }
-                      className="accent-blue-500"
-                    />
-                    排除强赎
+                    排除新债
                   </label>
 
                   <button
@@ -1007,13 +1023,23 @@ const App: React.FC = () => {
                         minTurnoverRate: null,
                         minRedeemDays: null,
                         excludeBRating: false,
-                        excludeStockST: false,
-                        excludeRedeem: false,
+                        excludeNewBond: false,
                       })
                     }
                     className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 transition-colors"
                   >
                     重置
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBackendScreen}
+                    disabled={loading}
+                    className={`col-span-2 sm:col-span-1 text-xs px-3 py-1.5 rounded-lg border bg-blue-600 text-white border-blue-500 hover:bg-blue-500 transition-colors ${
+                      loading ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    后端选股
                   </button>
                 </div>
               )}

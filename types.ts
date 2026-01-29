@@ -28,6 +28,7 @@ export interface BondData {
   sPureOr?: number;
   totalScore?: number;
   doubleLow: number; // Price + Premium Rate * 100
+  satisfyRedeem?: string | number; // 满足强赎
 }
 
 export enum SignalType {
@@ -46,4 +47,65 @@ export interface FilterConfig {
   maxPrice: number;
   maxPremium: number;
   minRating: string; // 'AAA', 'AA+', 'AA', 'A+'
+}
+
+export interface ScreenFactorWeights {
+  ytm_rt?: number;
+  premium_rt?: number;
+  bond_ytm?: number;
+  curr_iss_amt?: number;
+  stock_mom?: number;
+}
+
+export interface ScreenRequest {
+  max_price?: number;
+  max_premium_rt?: number;
+  min_turnover_rt?: number;
+  year_left?: number;
+  rating_pattern?: string;
+  top_n?: number;
+  exclude_bond_ids?: string[];
+  factor_weights?: ScreenFactorWeights;
+  hold_ids?: string[];
+}
+
+export interface ScreenSummary {
+  total_bonds: number;
+  selected_count: number;
+  config_used: Record<string, unknown>;
+}
+
+export interface ScreenResult {
+  summary: ScreenSummary;
+  result: Array<{
+    bond_id: string;
+    bond_nm: string;
+    price: number;
+    increase_rt: number;
+    bond_value: number;
+    premium_rt: number;
+    ytm_rt?: number | null;
+    total_score: number;
+    满足强赎?: string | number | null;
+    redeem_status?: string | null;
+    redeem_icon?: string | null;
+    rating_cd?: string | null;
+    year_left?: number | null;
+    turnover_rt?: number | null;
+    curr_iss_amt?: number | null;
+  }>;
+  sell: Array<{
+    bond_id: string;
+    bond_nm: string;
+    price: number;
+    increase_rt: number;
+    action: string;
+  }>;
+  buy: Array<{
+    bond_id: string;
+    bond_nm: string;
+    price: number;
+    increase_rt: number;
+    action: string;
+  }>;
 }

@@ -131,8 +131,6 @@ const BondTable: React.FC<Props> = ({
                       <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">纯债溢价</th>
                       <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">YTM</th>
                       <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">规模</th>
-                      <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">换手</th>
-                      <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">双低</th>
                     </>
                   )}
                   {showRedeemColumn && <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-center whitespace-nowrap">强赎</th>}
@@ -247,8 +245,6 @@ const BondTable: React.FC<Props> = ({
                           <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right text-slate-300 whitespace-nowrap">
                             {typeof bond.currIssAmt === 'number' ? bond.currIssAmt.toFixed(2) : '-'}
                           </td>
-                          <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right text-slate-300 whitespace-nowrap">{(bond.turnoverRate ?? 0).toFixed(2)}%</td>
-                          <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right text-slate-300 whitespace-nowrap">{bond.doubleLow.toFixed(2)}</td>
                         </>
                       )}
                       {showRedeemColumn && (
