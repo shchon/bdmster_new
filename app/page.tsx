@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from 'react';
 import { Activity, RefreshCw, LogOut, Briefcase, ListFilter, Sparkles, ArrowDownCircle, ArrowUpCircle, FileText, SlidersHorizontal } from 'lucide-react';
-import { BondData, type ScreenRequest } from '../types';
+import { BondData, type ScreenRequest, type ScreenSummary } from '../types';
 import { fetchJisiluData, loginJisilu, logoutJisilu, restoreJisiluCookie } from '../services/jisiluService';
 import { screenBonds } from '../services/bonds';
 import BondTable from '../components/BondTable';
@@ -36,6 +36,9 @@ const App: React.FC = () => {
 
   // 全量行情快照，供“持仓监控”三块使用，不受后端 TopN 影响
   const [allBonds, setAllBonds] = useState<BondData[]>([]);
+
+  // 最近一次后端选股返回的 summary（包含 config_used）
+  const [backendSummary, setBackendSummary] = useState<ScreenSummary | null>(null);
 
   const [scoreConfig, setScoreConfig] = useState<ScoreConfig>(DEFAULT_SCORE_CONFIG);
 
@@ -124,9 +127,10 @@ const App: React.FC = () => {
         req.hold_ids = Array.from(holdingIds);
       }
 
-      const { bonds: screenedBonds } = await screenBonds(req);
+      const { bonds: screenedBonds, summary } = await screenBonds(req);
 
       setBonds(screenedBonds);
+      setBackendSummary(summary);
       setLastUpdated(new Date());
     } catch (error: any) {
       console.error('Backend screening failed', error);
@@ -455,6 +459,29 @@ const App: React.FC = () => {
   const marketTop20Data = useMemo(() => {
     return marketRankedData.slice(0, marketTopN === 'ALL' ? marketRankedData.length : marketTopN);
   }, [marketRankedData, marketTopN]);
+
+  // 从 backendSummary.config_used 中提取关键配置，供 UI 展示
+  const backendConfigDisplay = useMemo(() => {
+    if (!backendSummary) return null;
+    const cfg = backendSummary.config_used as any;
+    if (!cfg || typeof cfg !== 'object') return null;
+
+    const factor = (cfg.factor_weights ?? {}) as Record<string, number | undefined>;
+
+    return {
+      maxPrice: cfg.max_price as number | undefined,
+      maxPremium: cfg.max_premium_rt as number | undefined,
+      topN: cfg.top_n as number | undefined,
+      yearLeft: cfg.year_left as number | undefined,
+      factorWeights: {
+        ytm_rt: factor.ytm_rt,
+        premium_rt: factor.premium_rt,
+        bond_ytm: factor.bond_ytm,
+        curr_iss_amt: factor.curr_iss_amt,
+        stock_mom: factor.stock_mom,
+      },
+    };
+  }, [backendSummary]);
 
   const handlePickBonds = () => {
     const n = Math.max(1, Math.floor(holdingTargetCount || 0));
@@ -896,12 +923,29 @@ const App: React.FC = () => {
 
         {/* 2. Market Opportunities */}
         <section>
-          <div className="mb-4">
+          <div className="mb-4 space-y-1">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <ListFilter className="text-blue-500" />
               市场优选排行
             </h2>
-            <p className="text-sm text-slate-400 mt-1">基于 total_score 排名（分数越高越靠前）</p>
+            <p className="text-sm text-slate-400">基于 total_score 排名（分数越高越靠前）</p>
+            {backendConfigDisplay && (
+              <div className="text-xs text-slate-400 bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 inline-flex flex-wrap gap-x-4 gap-y-1">
+                <span>
+                  条件：价格≤{backendConfigDisplay.maxPrice ?? '-'}，溢价≤{backendConfigDisplay.maxPremium ?? '-'}%，
+                  年限≥{backendConfigDisplay.yearLeft ?? '-'} 年，TopN=
+                  {backendConfigDisplay.topN ?? '-'}
+                </span>
+                <span className="flex flex-wrap gap-x-2 gap-y-1">
+                  <span>权重：</span>
+                  <span>YTM={backendConfigDisplay.factorWeights.ytm_rt ?? '-'} </span>
+                  <span>溢价={backendConfigDisplay.factorWeights.premium_rt ?? '-'} </span>
+                  <span>纯债偏离={backendConfigDisplay.factorWeights.bond_ytm ?? '-'} </span>
+                  <span>规模={backendConfigDisplay.factorWeights.curr_iss_amt ?? '-'} </span>
+                  <span>动量={backendConfigDisplay.factorWeights.stock_mom ?? '-'} </span>
+                </span>
+              </div>
+            )}
           </div>
           <div className="min-h-[400px]">
             <BondTable 
