@@ -48,6 +48,7 @@ const App: React.FC = () => {
     maxPremium: number | null;
     minRemainingYear: number | null;
     minTurnoverRate: number | null;
+    minIncreaseRate: number | null;
     minRedeemDays: number | null;
     excludeBRating: boolean;
     excludeNewBond: boolean;
@@ -57,6 +58,7 @@ const App: React.FC = () => {
     maxPremium: null,
     minRemainingYear: null,
     minTurnoverRate: null,
+    minIncreaseRate: null,
     minRedeemDays: null,
     excludeBRating: false,
     excludeNewBond: false,
@@ -430,9 +432,16 @@ const App: React.FC = () => {
         return false;
       }
 
+      // 排除涨幅超过 29% 的可转债（复选框控制）
       if (marketFilters.excludeNewBond) {
-        const nm = (b.name || '').trim().toUpperCase();
-        if (nm.startsWith('N')) return false;
+        const inc = typeof b.priceChange === 'number' ? b.priceChange : null;
+        if (inc !== null && inc > 29) return false;
+      }
+
+      // 按涨幅上限过滤：仅保留涨幅小于等于指定阈值的可转债
+      if (marketFilters.minIncreaseRate !== null) {
+        const inc = typeof b.priceChange === 'number' ? b.priceChange : null;
+        if (inc === null || inc > marketFilters.minIncreaseRate) return false;
       }
 
       if (marketFilters.minRedeemDays !== null) {
@@ -1033,6 +1042,20 @@ const App: React.FC = () => {
 
                   <input
                     type="number"
+                    value={marketFilters.minIncreaseRate ?? ''}
+                    onChange={(e) =>
+                      setMarketFilters((p) => ({
+                        ...p,
+                        minIncreaseRate:
+                          e.target.value.trim() === '' ? null : Number(e.target.value),
+                      }))
+                    }
+                    placeholder="涨幅≥%"
+                    className="w-full sm:w-24 bg-slate-900 border border-slate-600 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+
+                  <input
+                    type="number"
                     value={marketFilters.minRedeemDays ?? ''}
                     onChange={(e) =>
                       setMarketFilters((p) => ({
@@ -1054,7 +1077,7 @@ const App: React.FC = () => {
                       }
                       className="accent-blue-500"
                     />
-                    排除新债
+                    排除涨幅&gt;29%
                   </label>
 
                   <button
@@ -1065,6 +1088,7 @@ const App: React.FC = () => {
                         maxPremium: null,
                         minRemainingYear: null,
                         minTurnoverRate: null,
+                        minIncreaseRate: null,
                         minRedeemDays: null,
                         excludeBRating: false,
                         excludeNewBond: false,
