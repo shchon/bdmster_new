@@ -120,6 +120,9 @@ const BondTable: React.FC<Props> = ({
               <th className="px-2 sm:px-3 py-2.5 sm:py-3">可转债代码</th>
               <th className="px-2 sm:px-3 py-2.5 sm:py-3">可转债名字</th>
               <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right">收盘价</th>
+              {isMarketPreset && (
+                <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right whitespace-nowrap">正股价</th>
+              )}
               <th className="px-2 sm:px-3 py-2.5 sm:py-3 text-right">涨幅</th>
               {isMarketPreset && (
                 <>
@@ -219,6 +222,11 @@ const BondTable: React.FC<Props> = ({
                   <td className={`px-2 sm:px-3 py-2.5 sm:py-3 text-right font-medium ${bond.price > 130 ? 'text-red-400' : 'text-slate-200'}`}>
                     {bond.price.toFixed(2)}
                   </td>
+                  {isMarketPreset && (
+                    <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right text-slate-300 whitespace-nowrap">
+                      {Number.isFinite(bond.stockPrice) ? bond.stockPrice.toFixed(2) : '-'}
+                    </td>
+                  )}
                   <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right">
                     <div className={`flex items-center justify-end gap-1 ${bond.priceChange >= 0 ? 'text-red-400' : 'text-green-400'}`}>
                       {bond.priceChange >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}

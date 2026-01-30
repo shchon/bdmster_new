@@ -117,9 +117,9 @@ const App: React.FC = () => {
         req.year_left = marketFilters.minRemainingYear;
       }
 
-      if (marketTopN !== 'ALL') {
-        req.top_n = marketTopN;
-      }
+      // if (marketTopN !== 'ALL') {
+      //   req.top_n = marketTopN;
+      // }
 
       if (marketFilters.excludeBRating) {
         req.rating_pattern = 'A';

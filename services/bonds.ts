@@ -40,6 +40,7 @@ export const screenBonds = async (payload: ScreenRequest): Promise<ScreenBondsRe
     const premium = typeof item.premium_rt === 'number' ? item.premium_rt : 0;
     const bondValue = typeof item.bond_value === 'number' ? item.bond_value : undefined;
     const ytmRt = typeof item.ytm_rt === 'number' ? item.ytm_rt : undefined;
+    const stockLastPx = typeof item.stock_last_px === 'number' ? item.stock_last_px : Number.NaN;
     const yearLeft = typeof item.year_left === 'number' ? item.year_left : 0;
     const turnover = typeof item.turnover_rt === 'number' ? item.turnover_rt : undefined;
     const currIssAmt = typeof item.curr_iss_amt === 'number' ? item.curr_iss_amt : undefined;
@@ -52,7 +53,7 @@ export const screenBonds = async (payload: ScreenRequest): Promise<ScreenBondsRe
       price,
       priceChange: typeof item.increase_rt === 'number' ? item.increase_rt : 0,
       premiumRate: premium,
-      stockPrice: 0,
+      stockPrice: stockLastPx,
       stockChange: 0,
       listDate: undefined,
       bondValue,
