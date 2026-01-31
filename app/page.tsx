@@ -482,6 +482,7 @@ const App: React.FC = () => {
       maxPremium: cfg.max_premium_rt as number | undefined,
       topN: cfg.top_n as number | undefined,
       yearLeft: cfg.year_left as number | undefined,
+      klineFetchMode: backendSummary.kline_fetch_mode as string | undefined,
       factorWeights: {
         ytm_rt: factor.ytm_rt,
         premium_rt: factor.premium_rt,
@@ -944,6 +945,9 @@ const App: React.FC = () => {
                   条件：价格≤{backendConfigDisplay.maxPrice ?? '-'}，溢价≤{backendConfigDisplay.maxPremium ?? '-'}%，
                   年限≥{backendConfigDisplay.yearLeft ?? '-'} 年，TopN=
                   {backendConfigDisplay.topN ?? '-'}
+                </span>
+                <span>
+                  K线：{backendConfigDisplay.klineFetchMode ?? '-'}
                 </span>
                 <span className="flex flex-wrap gap-x-2 gap-y-1">
                   <span>权重：</span>

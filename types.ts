@@ -73,6 +73,7 @@ export interface ScreenSummary {
   total_bonds: number;
   selected_count: number;
   config_used: Record<string, unknown>;
+  kline_fetch_mode?: string;
 }
 
 export interface ScreenResult {
