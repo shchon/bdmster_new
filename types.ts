@@ -85,6 +85,7 @@ export interface ScreenResult {
     increase_rt: number;
     bond_value: number;
     premium_rt: number;
+    bond_ytm?: number | null;
     ytm_rt?: number | null;
     stock_last_px?: number | null;
     total_score: number;

@@ -46,6 +46,11 @@ export const screenBonds = async (payload: ScreenRequest): Promise<ScreenBondsRe
     const currIssAmt = typeof item.curr_iss_amt === 'number' ? item.curr_iss_amt : undefined;
     const rating = (item.rating_cd ?? '') as string;
 
+    const pureBondPremiumRate =
+      typeof item.bond_ytm === 'number'
+        ? item.bond_ytm * 100
+        : (typeof bondValue === 'number' && bondValue > 0 ? (price / bondValue - 1) * 100 : undefined);
+
     return {
       id: bondId,
       code: bondId,
@@ -57,10 +62,7 @@ export const screenBonds = async (payload: ScreenRequest): Promise<ScreenBondsRe
       stockChange: 0,
       listDate: undefined,
       bondValue,
-      pureBondPremiumRate:
-        typeof bondValue === 'number' && bondValue > 0
-          ? (price / bondValue - 1) * 100
-          : undefined,
+      pureBondPremiumRate,
       redeemStatus: (item.redeem_status ?? undefined) as string | undefined,
       redeemIcon: (item.redeem_icon ?? undefined) as string | undefined,
       satisfyRedeem: (item['满足强赎'] ?? undefined) as string | number | undefined,
