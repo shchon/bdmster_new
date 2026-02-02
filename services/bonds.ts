@@ -49,7 +49,7 @@ export const screenBonds = async (payload: ScreenRequest): Promise<ScreenBondsRe
     const pureBondPremiumRate =
       typeof item.bond_ytm === 'number'
         ? item.bond_ytm * 100
-        : (typeof bondValue === 'number' && bondValue > 0 ? (price / bondValue - 1) * 100 : undefined);
+        : Number.NaN;
 
     return {
       id: bondId,
