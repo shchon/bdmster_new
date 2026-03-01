@@ -19,6 +19,9 @@ const factorLabels: Record<ScoreFactorKey, string> = {
   premiumRate: '转股溢价率',
   currIssAmt: '剩余规模',
   pureBondPremiumRate: '纯债溢价率',
+  turnoverRt: '换手率',
+  price: '可转债价格',
+  stockMom: '动量',
 };
 
 const ScoreConfigModal: React.FC<Props> = ({ isOpen, value, onClose, onSave }) => {

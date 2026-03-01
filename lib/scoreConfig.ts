@@ -1,4 +1,11 @@
-export type ScoreFactorKey = 'ytmRt' | 'premiumRate' | 'currIssAmt' | 'pureBondPremiumRate';
+export type ScoreFactorKey =
+  | 'ytmRt'
+  | 'premiumRate'
+  | 'currIssAmt'
+  | 'pureBondPremiumRate'
+  | 'turnoverRt'
+  | 'price'
+  | 'stockMom';
 
 export type ScoreFactorConfig = {
   enabled: boolean;
@@ -18,6 +25,9 @@ export const DEFAULT_SCORE_CONFIG: ScoreConfig = {
     premiumRate: { enabled: true, weight: 1, largerBetter: false },
     currIssAmt: { enabled: true, weight: 1, largerBetter: false },
     pureBondPremiumRate: { enabled: true, weight: 1, largerBetter: false },
+    turnoverRt: { enabled: true, weight: 1, largerBetter: true },
+    price: { enabled: true, weight: 1, largerBetter: false },
+    stockMom: { enabled: true, weight: 1, largerBetter: true },
   },
 };
 

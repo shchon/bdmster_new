@@ -55,6 +55,8 @@ export interface ScreenFactorWeights {
   bond_ytm?: number;
   curr_iss_amt?: number;
   stock_mom?: number;
+  turnover_rt?: number;
+  price?: number;
 }
 
 export interface ScreenRequest {

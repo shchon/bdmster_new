@@ -104,6 +104,18 @@ const App: React.FC = () => {
     try {
       const req: ScreenRequest = {};
 
+      req.factor_weights = {
+        ytm_rt: scoreConfig.factors.ytmRt.enabled ? scoreConfig.factors.ytmRt.weight : 0,
+        premium_rt: scoreConfig.factors.premiumRate.enabled ? scoreConfig.factors.premiumRate.weight : 0,
+        curr_iss_amt: scoreConfig.factors.currIssAmt.enabled ? scoreConfig.factors.currIssAmt.weight : 0,
+        bond_ytm: scoreConfig.factors.pureBondPremiumRate.enabled
+          ? scoreConfig.factors.pureBondPremiumRate.weight
+          : 0,
+        stock_mom: scoreConfig.factors.stockMom.enabled ? scoreConfig.factors.stockMom.weight : 0,
+        turnover_rt: scoreConfig.factors.turnoverRt.enabled ? scoreConfig.factors.turnoverRt.weight : 0,
+        price: scoreConfig.factors.price.enabled ? scoreConfig.factors.price.weight : 0,
+      };
+
       if (marketFilters.maxPrice !== null) {
         req.max_price = marketFilters.maxPrice;
       }
@@ -257,6 +269,7 @@ const App: React.FC = () => {
   }, [scoreConfig]);
 
   const handleSaveScoreConfig = async (cfg: ScoreConfig) => {
+    // 仅保存评分配置，不触发重新计算；真正计算在点击“后端选股”时进行。
     setScoreConfig(cfg);
     setIsScoreConfigOpen(false);
     try {
@@ -270,7 +283,6 @@ const App: React.FC = () => {
     } catch {
       // ignore
     }
-    loadData(cfg);
   };
 
   const handleLogin = async (user_name: string, password: string) => {
@@ -489,6 +501,8 @@ const App: React.FC = () => {
         bond_ytm: factor.bond_ytm,
         curr_iss_amt: factor.curr_iss_amt,
         stock_mom: factor.stock_mom,
+        turnover_rt: factor.turnover_rt,
+        price: factor.price,
       },
     };
   }, [backendSummary]);
@@ -956,6 +970,8 @@ const App: React.FC = () => {
                   <span>纯债偏离={backendConfigDisplay.factorWeights.bond_ytm ?? '-'} </span>
                   <span>规模={backendConfigDisplay.factorWeights.curr_iss_amt ?? '-'} </span>
                   <span>动量={backendConfigDisplay.factorWeights.stock_mom ?? '-'} </span>
+                  <span>换手={backendConfigDisplay.factorWeights.turnover_rt ?? '-'} </span>
+                  <span>价格={backendConfigDisplay.factorWeights.price ?? '-'} </span>
                 </span>
               </div>
             )}
