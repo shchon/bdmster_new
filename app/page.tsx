@@ -71,6 +71,11 @@ const App: React.FC = () => {
 
   const [sellIds, setSellIds] = useState<Set<string>>(new Set());
 
+  const [blacklistIds, setBlacklistIds] = useState<Set<string>>(new Set());
+  const [isBlacklistOpen, setIsBlacklistOpen] = useState(false);
+
+  const BLACKLIST_KEY = 'bond_blacklist';
+
   const loadData = async (overrideScoreConfig?: ScoreConfig) => {
     setLoading(true);
     setErrorMsg(null);
@@ -95,6 +100,24 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddToBlacklist = (id: string) => {
+    setBlacklistIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
+
+  const handleRemoveFromBlacklist = (id: string) => {
+    setBlacklistIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const handleBackendScreen = async () => {
@@ -201,6 +224,9 @@ const App: React.FC = () => {
     const savedSell = safeParse(localStorage.getItem('my_bond_sell'));
     if (Array.isArray(savedSell)) setSellIds(new Set(savedSell));
 
+    const savedBlacklist = safeParse(localStorage.getItem(BLACKLIST_KEY));
+    if (Array.isArray(savedBlacklist)) setBlacklistIds(new Set(savedBlacklist));
+
     const savedLogs = safeParse(localStorage.getItem('trade_logs'));
     if (Array.isArray(savedLogs)) setTradeLogs(savedLogs);
 
@@ -242,6 +268,11 @@ const App: React.FC = () => {
     if (!storageLoaded) return;
     localStorage.setItem('my_bond_sell', JSON.stringify(Array.from(sellIds)));
   }, [sellIds]);
+
+  useEffect(() => {
+    if (!storageLoaded) return;
+    localStorage.setItem(BLACKLIST_KEY, JSON.stringify(Array.from(blacklistIds)));
+  }, [blacklistIds]);
 
   useEffect(() => {
     if (!storageLoaded) return;
@@ -374,26 +405,6 @@ const App: React.FC = () => {
     });
   };
 
-  // Derived Data Lists
-  // 持仓相关视图始终基于 allBonds（最近一次全量行情），避免被后端 TopN 筛掉
-  const myHoldingsData = useMemo(() => {
-    return allBonds.filter((b) => holdingIds.has(b.id) && !sellIds.has(b.id));
-  }, [allBonds, holdingIds, sellIds]);
-
-  const myToSellData = useMemo(() => {
-    return allBonds.filter((b) => holdingIds.has(b.id) && sellIds.has(b.id));
-  }, [allBonds, holdingIds, sellIds]);
-
-  const myToBuyData = useMemo(() => {
-    return allBonds.filter((b) => buyIds.has(b.id) && !holdingIds.has(b.id));
-  }, [allBonds, buyIds, holdingIds]);
-
-  const holdingsOverallChange = useMemo(() => {
-    if (myHoldingsData.length === 0) return null;
-    const sum = myHoldingsData.reduce((acc, b) => acc + (typeof b.priceChange === 'number' ? b.priceChange : 0), 0);
-    return sum / myHoldingsData.length;
-  }, [myHoldingsData]);
-
   const sortByTotalScoreDesc = (list: BondData[]) => {
     return [...list].sort((a, b) => {
       const at = a.totalScore;
@@ -406,6 +417,24 @@ const App: React.FC = () => {
       return a.doubleLow - b.doubleLow;
     });
   };
+
+  const myHoldingsData = useMemo(() => {
+    return allBonds.filter((b) => holdingIds.has(b.id));
+  }, [allBonds, holdingIds]);
+
+  const myToBuyData = useMemo(() => {
+    return allBonds.filter((b) => buyIds.has(b.id));
+  }, [allBonds, buyIds]);
+
+  const myToSellData = useMemo(() => {
+    return allBonds.filter((b) => sellIds.has(b.id));
+  }, [allBonds, sellIds]);
+
+  const holdingsOverallChange = useMemo(() => {
+    if (myHoldingsData.length === 0) return null;
+    const sum = myHoldingsData.reduce((acc, b) => acc + (typeof b.priceChange === 'number' ? b.priceChange : 0), 0);
+    return sum / myHoldingsData.length;
+  }, [myHoldingsData]);
 
   const myToSellSorted = useMemo(() => sortByTotalScoreDesc(myToSellData), [myToSellData]);
   const myToBuySorted = useMemo(() => sortByTotalScoreDesc(myToBuyData), [myToBuyData]);
@@ -509,7 +538,7 @@ const App: React.FC = () => {
 
   const handlePickBonds = () => {
     const n = Math.max(1, Math.floor(holdingTargetCount || 0));
-    const selected = marketRankedData.slice(0, n);
+    const selected = marketRankedData.filter((b) => !blacklistIds.has(b.id)).slice(0, n);
     const selectedIds = new Set(selected.map((b) => b.id));
 
     setBuyIds(new Set(selected.filter((b) => !holdingIds.has(b.id)).map((b) => b.id)));
@@ -890,6 +919,12 @@ const App: React.FC = () => {
               >
                 确定买卖
               </button>
+              <button
+                onClick={() => setIsBlacklistOpen(true)}
+                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 transition-colors"
+              >
+                黑名单
+              </button>
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -988,6 +1023,8 @@ const App: React.FC = () => {
               data={marketTop20Data} 
               holdingIds={holdingIds}
               onToggleHolding={handleToggleHolding}
+              blacklistIds={blacklistIds}
+              onAddToBlacklist={handleAddToBlacklist}
               columnPreset="market"
               expandableColumns={true}
               showScoreColumns={true}
@@ -1226,6 +1263,43 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBlacklistOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-2xl bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+              <div className="text-sm font-semibold text-white">黑名单</div>
+              <button
+                onClick={() => setIsBlacklistOpen(false)}
+                className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-4 space-y-2">
+              {blacklistIds.size === 0 ? (
+                <div className="text-sm text-slate-400">暂无黑名单</div>
+              ) : (
+                Array.from(blacklistIds).map((id) => {
+                  const b = allBonds.find((x) => x.id === id) || bonds.find((x) => x.id === id);
+                  const label = `${b?.code || id} ${b?.name || ''}`.trim();
+                  return (
+                    <div key={id} className="flex items-center justify-between gap-3 border border-slate-700 rounded-lg px-3 py-2 bg-slate-900/30">
+                      <div className="text-sm text-slate-200 truncate">{label}</div>
+                      <button
+                        onClick={() => handleRemoveFromBlacklist(id)}
+                        className="text-xs px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 transition-colors"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

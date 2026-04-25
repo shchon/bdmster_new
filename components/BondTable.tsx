@@ -9,6 +9,8 @@ interface Props {
   data: BondData[];
   holdingIds: Set<string>;
   onToggleHolding: (id: string) => void;
+  blacklistIds?: Set<string>;
+  onAddToBlacklist?: (id: string) => void;
   buyIds?: Set<string>;
   onToggleBuy?: (id: string) => void;
   sellIds?: Set<string>;
@@ -31,6 +33,8 @@ const BondTable: React.FC<Props> = ({
   data, 
   holdingIds, 
   onToggleHolding, 
+  blacklistIds,
+  onAddToBlacklist,
   buyIds,
   onToggleBuy,
   sellIds,
@@ -161,12 +165,22 @@ const BondTable: React.FC<Props> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700">
-            {filteredData.map((bond) => {
+            {filteredData.map((bond, idx) => {
               const isHeld = holdingIds.has(bond.id);
+              const isBlacklisted = blacklistIds ? blacklistIds.has(bond.id) : false;
               const isBuy = buyIds ? buyIds.has(bond.id) : false;
               const isSell = sellIds ? sellIds.has(bond.id) : false;
               return (
-                <tr key={bond.id} className={`hover:bg-slate-700/50 transition-colors group ${isHeld ? 'bg-slate-800/80' : ''}`}>
+                <tr
+                  key={bond.id}
+                  className={`hover:bg-slate-700/50 transition-colors group ${
+                    isBlacklisted
+                      ? 'bg-red-500/15 border-l-4 border-red-500/60'
+                      : isHeld
+                        ? 'bg-slate-800/80'
+                        : ''
+                  }`}
+                >
                   {showHoldingColumn && (
                     <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-center">
                       <button 
@@ -203,6 +217,18 @@ const BondTable: React.FC<Props> = ({
                   <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-slate-200 whitespace-nowrap">
                     {isMarketPreset ? (
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onAddToBlacklist?.(bond.id)}
+                          className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors active:scale-95 ${
+                            isBlacklisted
+                              ? 'border-red-500/40 text-red-300 bg-red-500/10'
+                              : 'border-slate-600 text-slate-300 bg-slate-800/40 hover:bg-slate-700/60'
+                          } ${onAddToBlacklist ? 'cursor-pointer' : 'cursor-default'}`}
+                          title={isBlacklisted ? '已加入黑名单' : '加入黑名单'}
+                          disabled={!onAddToBlacklist}
+                        >
+                          {idx + 1}
+                        </button>
                         <button 
                           onClick={() => onToggleHolding(bond.id)}
                           className={`transition-all active:scale-90 ${isHeld ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400/70'}`}
