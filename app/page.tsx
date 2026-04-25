@@ -655,12 +655,13 @@ const App: React.FC = () => {
     const sells = Array.from(sellIds);
     const blacklist_ids = Array.from(blacklistIds);
     return {
-      version: 2,
+      version: 3,
       ts: new Date().toISOString(),
       holdings,
       buys,
       sells,
       blacklist_ids,
+      scoreConfig,
       tradeLogs,
     };
   };
@@ -672,11 +673,15 @@ const App: React.FC = () => {
     const sells = Array.isArray(data.sells) ? data.sells : [];
     const blacklist = Array.isArray(data.blacklist_ids) ? data.blacklist_ids : [];
     const logs = Array.isArray(data.tradeLogs) ? data.tradeLogs : [];
+    const syncedScoreConfig = data.scoreConfig && typeof data.scoreConfig === 'object' ? data.scoreConfig : null;
 
     setHoldingIds(new Set(holdings.map((x: any) => String(x))));
     setBuyIds(new Set(buys.map((x: any) => String(x))));
     setSellIds(new Set(sells.map((x: any) => String(x))));
     setBlacklistIds(new Set(blacklist.map((x: any) => String(x))));
+    if (syncedScoreConfig) {
+      setScoreConfig(normalizeScoreConfig(syncedScoreConfig));
+    }
     setTradeLogs(logs as TradeLogItem[]);
   };
 
